@@ -1,0 +1,96 @@
+import base64
+import mimetypes
+import os
+import httpx
+import logging
+import aioredis
+from app.core import settings
+from urllib.parse import urlparse
+from gundi_core import schemas
+from gundi_client_v2 import GundiClient
+from gcloud.aio.storage import Storage
+
+
+_portal = GundiClient()
+_redis_client = aioredis.from_url(
+    f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}",
+    encoding="utf-8",
+    decode_responses=True,
+)
+gcp_storage = Storage()
+
+
+logger = logging.getLogger(__name__)
+
+
+DEFAULT_TIMEOUT = (3.1, 20)
+
+
+########################################################################################
+# GUNDI V1
+########################################################################################
+
+
+class WPSWatchCameraTrapDispatcher:
+    def __init__(self, config: schemas.OutboundConfiguration):
+        self.config = config
+
+    async def send(self, camera_trap_payload: dict):
+        try:
+            file_name = camera_trap_payload.get("Attachment1")
+            downloaded_file = await gcp_storage.download(
+                bucket=settings.BUCKET_NAME, object_name=file_name
+            )
+            file_data = self.get_file_data(file_name, downloaded_file)
+            result = await self.wpswatch_post(camera_trap_payload, file_data)
+        except Exception as ex:
+            logger.exception(f"exception raised sending to WPS Watch {ex}")
+            raise ex
+        else:  # Remove the file from GCP after delivering it to WPS Watch
+            await gcp_storage.delete(bucket=settings.BUCKET_NAME, object_name=file_name)
+        return
+
+    async def wpswatch_post(self, camera_trap_payload, file_data=None):
+        sanitized_endpoint = self.sanitize_endpoint(
+            f"{self.config.endpoint}/api/Upload"
+        )
+        headers = {
+            "Wps-Api-Key": self.config.token,
+        }
+        files = {"Attachment1": file_data}
+
+        body = camera_trap_payload
+        try:
+            async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
+                response = await client.post(
+                    sanitized_endpoint,
+                    data=body,
+                    headers=headers,
+                    files=files,
+                )
+            response.raise_for_status()
+        except httpx.HTTPError as ex:
+            logger.exception("Error occurred posting to WPS Watch", extra=body)
+            raise ex  # Raise so it's retried
+        return response
+
+    def get_file_data(self, file_name, file):
+        name, file_ext = os.path.splitext(file_name)
+        mimetype = mimetypes.types_map[file_ext]
+        return file_name, file, mimetype
+
+    @staticmethod
+    def sanitize_endpoint(endpoint):
+        scheme = urlparse(endpoint).scheme
+        host = urlparse(endpoint).hostname
+        path = urlparse(endpoint).path.replace(
+            "//", "/"
+        )  # in case tailing forward slash configured in portal
+        sanitized_endpoint = f"{scheme}://{host}{path}"
+        return sanitized_endpoint
+
+
+dispatcher_cls_by_type = {
+    # Gundi v1
+    schemas.v1.StreamPrefixEnum.camera_trap: WPSWatchCameraTrapDispatcher,
+}
