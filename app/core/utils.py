@@ -1,11 +1,7 @@
 # ToDo: Move base classes or utils into some common package?
 import base64
 import json
-from typing import Union
-import aiohttp
 import logging
-import httpx
-import backoff
 import aioredis
 from enum import Enum
 from redis import exceptions as redis_exceptions

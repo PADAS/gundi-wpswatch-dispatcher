@@ -1,4 +1,3 @@
-import base64
 import mimetypes
 import os
 import httpx
@@ -10,6 +9,7 @@ from gundi_core import schemas
 from gundi_client_v2 import GundiClient
 from gcloud.aio.storage import Storage
 
+from app.core.utils import RateLimiterSemaphore
 
 _portal = GundiClient()
 _redis_client = aioredis.from_url(
@@ -42,14 +42,18 @@ class WPSWatchCameraTrapDispatcher:
                 bucket=settings.BUCKET_NAME, object_name=file_name
             )
             file_data = self.get_file_data(file_name, downloaded_file)
-            result = await self.wpswatch_post(camera_trap_payload, file_data)
-        except Exception as ex:
-            logger.exception(f"exception raised sending to WPS Watch {ex}")
-            raise ex
+            async with RateLimiterSemaphore(
+                redis_client=_redis_client, url=str(self.config.endpoint)
+            ):
+                result = await self.wpswatch_post(camera_trap_payload, file_data)
+        except Exception as e:
+            logger.exception(f"Error sending data to WPS Watch {e}")
+            raise e
         else:  # Remove the file from GCP after delivering it to WPS Watch
             await gcp_storage.delete(bucket=settings.BUCKET_NAME, object_name=file_name)
-        return
+            return result
 
+    # ToDo: Make a WPS Watch client class?
     async def wpswatch_post(self, camera_trap_payload, file_data=None):
         sanitized_endpoint = self.sanitize_endpoint(
             f"{self.config.endpoint}/api/Upload"
@@ -69,9 +73,9 @@ class WPSWatchCameraTrapDispatcher:
                     files=files,
                 )
             response.raise_for_status()
-        except httpx.HTTPError as ex:
-            logger.exception("Error occurred posting to WPS Watch", extra=body)
-            raise ex  # Raise so it's retried
+        except httpx.HTTPError as e:
+            logger.exception(f"Error occurred posting to WPS Watch {e}", extra=body)
+            raise e  # Raise so it's retried
         return response
 
     def get_file_data(self, file_name, file):
