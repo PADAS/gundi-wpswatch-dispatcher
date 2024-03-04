@@ -63,7 +63,9 @@ class WPSWatchCameraTrapDispatcher:
 
         body = camera_trap_payload
         try:
-            async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
+            connect_timeout, read_timeout = settings.DEFAULT_REQUESTS_TIMEOUT
+            timeout_settings = httpx.Timeout(read_timeout, connect=connect_timeout)
+            async with httpx.AsyncClient(timeout=timeout_settings) as client:
                 response = await client.post(
                     sanitized_endpoint,
                     data=body,
