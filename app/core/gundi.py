@@ -6,7 +6,7 @@ from app.core import settings
 from app.core.utils import ExtraKeys
 from app.core.errors import ReferenceDataError
 from gundi_client import PortalApi
-from .utils import _cache_db
+from .utils import _redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ async def get_outbound_config_detail(
     }
 
     cache_key = f"outbound_detail.{outbound_id}"
-    cached = await _cache_db.get(cache_key)
+    cached = await _redis_client.get(cache_key)
 
     if cached:
         config = schemas.OutboundConfiguration.parse_raw(cached)
@@ -97,7 +97,7 @@ async def get_outbound_config_detail(
             )
         else:
             if config:  # don't cache empty response
-                await _cache_db.setex(cache_key, _cache_ttl, config.json())
+                await _redis_client.setex(cache_key, _cache_ttl, config.json())
             return config
 
 
@@ -113,7 +113,7 @@ async def get_inbound_integration_detail(
     }
 
     cache_key = f"inbound_detail.{integration_id}"
-    cached = await _cache_db.get(cache_key)
+    cached = await _redis_client.get(cache_key)
 
     if cached:
         config = schemas.IntegrationInformation.parse_raw(cached)
@@ -170,5 +170,5 @@ async def get_inbound_integration_detail(
             )
         else:
             if config:  # don't cache empty response
-                await _cache_db.setex(cache_key, _cache_ttl, config.json())
+                await _redis_client.setex(cache_key, _cache_ttl, config.json())
             return config

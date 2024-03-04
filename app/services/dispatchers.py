@@ -2,19 +2,12 @@ import mimetypes
 import os
 import httpx
 import logging
-import aioredis
 from app.core import settings
 from urllib.parse import urlparse
 from gundi_core import schemas
 from gcloud.aio.storage import Storage
+from app.core.utils import RateLimiterSemaphore, _redis_client
 
-from app.core.utils import RateLimiterSemaphore
-
-_redis_client = aioredis.from_url(
-    f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}",
-    encoding="utf-8",
-    decode_responses=True,
-)
 gcp_storage = Storage()
 
 

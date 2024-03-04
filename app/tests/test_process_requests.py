@@ -21,7 +21,7 @@ async def test_process_cameratrap_file_successfully(
 ):
     # Mock external dependencies
     mocker.patch("app.core.gundi._portal", mock_gundi_client_v1)
-    mocker.patch("app.core.gundi._cache_db", mock_redis)
+    mocker.patch("app.core.gundi._redis_client", mock_redis)
     mocker.patch("app.services.dispatchers._redis_client", mock_redis)
     mocker.patch("app.services.dispatchers.gcp_storage", mock_cloud_storage_client)
     mocker.patch("app.services.process_messages.pubsub", mock_pubsub_client)
@@ -55,7 +55,7 @@ async def test_raises_on_wpswatch_api_bad_status(
 ):
     # Mock external dependencies
     mocker.patch("app.core.gundi._portal", mock_gundi_client_v1)
-    mocker.patch("app.core.gundi._cache_db", mock_redis)
+    mocker.patch("app.core.gundi._redis_client", mock_redis)
     mocker.patch("app.services.dispatchers._redis_client", mock_redis)
     mocker.patch("app.services.dispatchers.gcp_storage", mock_cloud_storage_client)
     mocker.patch("app.services.process_messages.pubsub", mock_pubsub_client)
@@ -92,7 +92,7 @@ async def test_raises_on_wpswatch_api_timeout(
 ):
     # Mock external dependencies
     mocker.patch("app.core.gundi._portal", mock_gundi_client_v1)
-    mocker.patch("app.core.gundi._cache_db", mock_redis)
+    mocker.patch("app.core.gundi._redis_client", mock_redis)
     mocker.patch("app.services.dispatchers._redis_client", mock_redis)
     mocker.patch("app.services.dispatchers.gcp_storage", mock_cloud_storage_client)
     mocker.patch("app.services.process_messages.pubsub", mock_pubsub_client)
@@ -129,7 +129,7 @@ async def test_throttling_on_rate_limit_exceeded(
     # Mock external dependencies
     # Mock external dependencies
     mocker.patch("app.core.gundi._portal", mock_gundi_client_v1)
-    mocker.patch("app.core.gundi._cache_db", mock_redis_with_rate_limit_exceeded)
+    mocker.patch("app.core.gundi._redis_client", mock_redis_with_rate_limit_exceeded)
     mocker.patch(
         "app.services.dispatchers._redis_client", mock_redis_with_rate_limit_exceeded
     )

@@ -23,13 +23,13 @@ def get_redis_db():
 
 
 _cache_ttl = settings.PORTAL_CONFIG_OBJECT_CACHE_TTL
-_cache_db = get_redis_db()
+_redis_client = get_redis_db()
 connect_timeout, read_timeout = settings.DEFAULT_REQUESTS_TIMEOUT
 
 
 async def read_config_from_cache_safe(cache_key, extra_dict):
     try:
-        config = await _cache_db.get(cache_key)
+        config = await _redis_client.get(cache_key)
     except redis_exceptions.ConnectionError as e:
         logger.warning(
             f"ConnectionError while reading integration configuration from Cache: {e}",
@@ -48,7 +48,7 @@ async def read_config_from_cache_safe(cache_key, extra_dict):
 
 async def write_config_in_cache_safe(key, ttl, config, extra_dict):
     try:
-        await _cache_db.setex(key, ttl, config.json())
+        await _redis_client.setex(key, ttl, config.json())
     except redis_exceptions.ConnectionError as e:
         logger.warning(
             f"ConnectionError while writing integration configuration to Cache: {e}",
