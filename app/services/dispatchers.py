@@ -6,12 +6,10 @@ import aioredis
 from app.core import settings
 from urllib.parse import urlparse
 from gundi_core import schemas
-from gundi_client_v2 import GundiClient
 from gcloud.aio.storage import Storage
 
 from app.core.utils import RateLimiterSemaphore
 
-_portal = GundiClient()
 _redis_client = aioredis.from_url(
     f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}",
     encoding="utf-8",
