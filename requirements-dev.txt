@@ -50,7 +50,6 @@ environs==9.5.0
     # via
     #   -r requirements.in
     #   gundi-client
-    #   gundi-client-v2
 exceptiongroup==1.2.0
     # via
     #   anyio
@@ -88,13 +87,10 @@ grpcio-status==1.60.0
     # via google-api-core
 gundi-client==1.0.1
     # via -r requirements.in
-gundi-client-v2==2.1.7
-    # via -r requirements.in
 gundi-core==1.3.0
     # via
     #   -r requirements.in
     #   gundi-client
-    #   gundi-client-v2
 h11==0.14.0
     # via
     #   httpcore
@@ -107,7 +103,6 @@ httpx==0.24.1
     # via
     #   -r requirements.in
     #   gundi-client
-    #   gundi-client-v2
     #   respx
 idna==3.6
     # via
@@ -194,7 +189,6 @@ pydantic==1.10.13
     #   -r requirements.in
     #   fastapi
     #   gundi-client
-    #   gundi-client-v2
     #   gundi-core
 pyjwt==2.8.0
     # via gcloud-aio-auth
@@ -216,9 +210,7 @@ requests==2.31.0
     #   google-api-core
     #   opentelemetry-exporter-otlp-proto-http
 respx==0.20.2
-    # via
-    #   gundi-client
-    #   gundi-client-v2
+    # via gundi-client
 rsa==4.9
     # via
     #   gcloud-aio-storage
