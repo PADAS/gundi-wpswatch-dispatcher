@@ -1,9 +1,6 @@
 import datetime
 import pytest
 import asyncio
-import gundi_core.schemas.v2 as schemas_v2
-from smartconnect import SMARTClientException
-from gundi_core import events as system_events
 from gcloud.aio import pubsub
 from app.core import settings
 
@@ -15,7 +12,7 @@ def async_return(result):
 
 
 @pytest.fixture
-def mock_cache(mocker):
+def mock_redis(mocker):
     mock_cache = mocker.MagicMock()
     mock_cache.get.return_value = async_return(None)
     mock_cache.setex.return_value = async_return(None)
@@ -30,11 +27,11 @@ def mock_cache(mocker):
 
 
 @pytest.fixture
-def mock_cache_with_rate_limit_exceeded(mock_cache):
-    mock_cache.execute.return_value = async_return(
+def mock_redis_with_rate_limit_exceeded(mock_redis):
+    mock_redis.execute.return_value = async_return(
         (4, True)
     )  # 3 req/sec is the default limit
-    return mock_cache
+    return mock_redis
 
 
 @pytest.fixture
@@ -67,27 +64,7 @@ def mock_pubsub_client(
 
 
 @pytest.fixture
-def mock_pubsub_client_with_observation_delivery_failure(
-    mocker, observation_delivery_failure_pubsub_message, gcp_pubsub_publish_response
-):
-    mock_client = mocker.MagicMock()
-    mock_publisher = mocker.MagicMock()
-    mock_publisher.publish.return_value = async_return(gcp_pubsub_publish_response)
-    mock_publisher.topic_path.return_value = (
-        f"projects/{settings.GCP_PROJECT_ID}/topics/{settings.DISPATCHER_EVENTS_TOPIC}"
-    )
-    mock_client.PublisherClient.return_value = mock_publisher
-    mock_client.PubsubMessage.return_value = observation_delivery_failure_pubsub_message
-    return mock_client
-
-
-@pytest.fixture
 def post_report_response():
-    return {}
-
-
-@pytest.fixture
-def smartclient_post_smart_request_response():
     return {}
 
 
@@ -103,15 +80,15 @@ def inbound_integration_config():
         "id": "12345b4f-88cd-49c4-a723-0ddff1f580c4",
         "type": "1234e5bd-a473-4c02-9227-27b6134615a4",
         "owner": "1234191a-bcf3-471b-9e7d-6ba8bc71be9e",
-        "endpoint": "https://test.gfw.org",
+        "endpoint": "https://icu.test.com",
         "login": "test",
         "password": "test",  # pragma: allowlist secret
         "token": "",
-        "type_slug": "gfw",
-        "provider": "gfw",
+        "type_slug": "icu",
+        "provider": "icu",
         "default_devicegroup": "1234cfdc-1aae-44b0-8e0a-22c72355ea85",
         "enabled": True,
-        "name": "GFW - SMART Connect",
+        "name": "ICU - WPS Watch",
     }
 
 
@@ -121,14 +98,14 @@ def outbound_integration_config():
         "id": "38ebbae6-2535-43f9-be88-96f9daec83f3",
         "type": "f61b0c60-c863-44d7-adc6-d9b49b389e69",
         "owner": "1111191a-bcf3-471b-9e7d-6ba8bc71be9e",
-        "name": "[Internal] AI2 Test -  GFW to  SMART Connect",
-        "endpoint": "https://fakesmartconnectsite.smartconservationtools.org/server",
+        "name": "[Internal] AI2 Test -  ICU to  WPS Watch",
+        "endpoint": "https://wpswatch-api.test.com",
         "state": {},
         "login": "",
         "password": "",
         "token": "faked87681cd1d01ad07c2d0f57d15d6079ae7d7",  # pragma: allowlist secret
-        "type_slug": "smart_connect",
-        "inbound_type_slug": "gfw",
+        "type_slug": "wps_watch",
+        "inbound_type_slug": "icu",
         "additional": {},
     }
 
@@ -175,18 +152,18 @@ def pubsub_cloud_event_headers():
 
 
 @pytest.fixture
-def geoevent_v1_cloud_event_payload():
+def cameratrap_v1_cloud_event_payload():
     timestamp = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     return {
         "message": {
             "attributes": {
-                "observation_type": "ge",
-                "device_id": "none",
+                "observation_type": "ct",
+                "device_id": "mmcammera",
                 "outbound_config_id": "38ebbae6-2535-43f9-be88-96f9daec83f3",
                 "integration_id": "c25a53f6-e206-43dd-8f62-a3759565ae3d",
                 "tracing_context": "{}",
             },
-            "data": "eyJjYV91dWlkIjogIjE2OTM2MWQwLTYyYjgtNDExZC1hOGU2LTAxOTgyMzgwNTAxNiIsICJwYXRyb2xfcmVxdWVzdHMiOiBbXSwgIndheXBvaW50X3JlcXVlc3RzIjogW3sidHlwZSI6ICJGZWF0dXJlIiwgImdlb21ldHJ5IjogeyJjb29yZGluYXRlcyI6IFstNTEuNjg4Njc1LCAtNzIuNzA0NDY1XX0sICJwcm9wZXJ0aWVzIjogeyJkYXRlVGltZSI6ICIyMDI0LTAyLTE2VDExOjUyOjAzIiwgInNtYXJ0RGF0YVR5cGUiOiAiaW5jaWRlbnQiLCAic21hcnRGZWF0dXJlVHlwZSI6ICJ3YXlwb2ludC9uZXciLCAic21hcnRBdHRyaWJ1dGVzIjogeyJvYnNlcnZhdGlvbkdyb3VwcyI6IFt7Im9ic2VydmF0aW9ucyI6IFt7Im9ic2VydmF0aW9uVXVpZCI6ICIzYjNkYTFmMi01YTNmLTQ3Y2YtYjlkMS1jZmMxMGYzYzYxNzAiLCAiY2F0ZWdvcnkiOiAiaHVtYW5hY3Rpdml0eS5wb2FjaGluZyIsICJhdHRyaWJ1dGVzIjoge319XX1dLCAicGF0cm9sVXVpZCI6IG51bGwsICJwYXRyb2xMZWdVdWlkIjogbnVsbCwgInBhdHJvbElkIjogbnVsbCwgImluY2lkZW50SWQiOiBudWxsLCAiaW5jaWRlbnRVdWlkIjogbnVsbCwgInRlYW0iOiBudWxsLCAib2JqZWN0aXZlIjogbnVsbCwgImNvbW1lbnQiOiAiUmVwb3J0OiBQb2FjaGVycyBBY3Rpdml0eVxuSW1wb3J0ZWQ6IDIwMjQtMDItMTZUMTE6NTI6NDcuNDM2MTMxLTAzOjAwIiwgImlzQXJtZWQiOiBudWxsLCAidHJhbnNwb3J0VHlwZSI6IG51bGwsICJtYW5kYXRlIjogbnVsbCwgIm51bWJlciI6IG51bGwsICJtZW1iZXJzIjogbnVsbCwgImxlYWRlciI6IG51bGwsICJhdHRhY2htZW50cyI6IFtdfX19XSwgInRyYWNrX3BvaW50X3JlcXVlc3RzIjogW119",  # pragma: allowlist secret
+            "data": "eyJBdHRhY2htZW50MSI6ICJsaW9uXzIwMjQwMzA0MDkxOC5qcGVnIiwgIkF0dGFjaG1lbnRzIjogIjEiLCAiRnJvbSI6ICI1MTAyMGUwZS1hNGM3LTQ0NTYtYmMwMS1jMGRjNTE2NWNjN2VAcG9ydGFsLTEwLjEwNy4xOTMuMTQ4Lm5pcC5pbyIsICJUbyI6ICJtbUB1cGxvYWQud3Bzd2F0Y2gub3JnIn0=",  # pragma: allowlist secret
             "messageId": "9155786613739819",
             "message_id": "9155786613739819",
             "publishTime": timestamp,
@@ -208,6 +185,7 @@ def mock_cloud_storage_client(
 ):
     mock_client = mocker.MagicMock()
     mock_client.download.return_value = async_return(attachment_file_blob)
+    mock_client.delete.return_value = async_return(None)
     mock_client.__aenter__.return_value = mock_client
     mock_client.__aexit__.return_value = None
     return mock_client
@@ -218,3 +196,8 @@ def mock_cloud_storage_client_class(mocker, mock_cloud_storage_client):
     mock_cloud_storage_client_class = mocker.MagicMock()
     mock_cloud_storage_client_class.return_value = mock_cloud_storage_client
     return mock_cloud_storage_client_class
+
+
+@pytest.fixture
+def camera_trap_upload_response():
+    return {}  # ToDo: Check a real WPSWatch api response
