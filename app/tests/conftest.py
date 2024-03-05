@@ -22,6 +22,7 @@ def mock_redis(mocker):
     mock_cache.execute.return_value = async_return((1, True))
     mock_cache.__aenter__.return_value = mock_cache
     mock_cache.__aexit__.return_value = None
+    mock_cache.close.return_value = async_return(None)
     mock_cache.pipeline.return_value = mock_cache
     return mock_cache
 
@@ -58,6 +59,9 @@ def mock_pubsub_client(
     mock_publisher.topic_path.return_value = (
         f"projects/{settings.GCP_PROJECT_ID}/topics/{settings.DISPATCHER_EVENTS_TOPIC}"
     )
+    mock_publisher.__aenter__.return_value = mock_publisher
+    mock_publisher.__aexit__.return_value = None
+    mock_publisher.close.return_value = async_return(None)
     mock_client.PublisherClient.return_value = mock_publisher
     mock_client.PubsubMessage.return_value = observation_delivered_pubsub_message
     return mock_client
@@ -123,6 +127,9 @@ def mock_gundi_client_v1(
     mock_client.get_outbound_integration.return_value = async_return(
         outbound_integration_config
     )
+    mock_client.__aenter__.return_value = mock_client
+    mock_client.__aexit__.return_value = None
+    mock_client.close.return_value = async_return(None)
     return mock_client
 
 
@@ -188,6 +195,7 @@ def mock_cloud_storage_client(
     mock_client.delete.return_value = async_return(None)
     mock_client.__aenter__.return_value = mock_client
     mock_client.__aexit__.return_value = None
+    mock_client.close.return_value = async_return(None)
     return mock_client
 
 

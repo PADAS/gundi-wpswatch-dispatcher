@@ -20,6 +20,7 @@ async def test_process_cameratrap_file_successfully(
     # Mock external dependencies
     mocker.patch("app.core.gundi.portal_client", mock_gundi_client_v1)
     mocker.patch("app.core.gundi.redis_client", mock_redis)
+    mocker.patch("app.core.utils.redis_client", mock_redis)
     mocker.patch("app.services.dispatchers.redis_client", mock_redis)
     mocker.patch("app.services.dispatchers.gcp_storage", mock_cloud_storage_client)
     mocker.patch("app.services.process_messages.pubsub", mock_pubsub_client)
@@ -57,6 +58,7 @@ async def test_raises_on_wpswatch_api_bad_status(
     # Mock external dependencies
     mocker.patch("app.core.gundi.portal_client", mock_gundi_client_v1)
     mocker.patch("app.core.gundi.redis_client", mock_redis)
+    mocker.patch("app.core.utils.redis_client", mock_redis)
     mocker.patch("app.services.dispatchers.redis_client", mock_redis)
     mocker.patch("app.services.dispatchers.gcp_storage", mock_cloud_storage_client)
     mocker.patch("app.services.process_messages.pubsub", mock_pubsub_client)
@@ -97,6 +99,7 @@ async def test_raises_on_wpswatch_api_timeout(
     # Mock external dependencies
     mocker.patch("app.core.gundi.portal_client", mock_gundi_client_v1)
     mocker.patch("app.core.gundi.redis_client", mock_redis)
+    mocker.patch("app.core.utils.redis_client", mock_redis)
     mocker.patch("app.services.dispatchers.redis_client", mock_redis)
     mocker.patch("app.services.dispatchers.gcp_storage", mock_cloud_storage_client)
     mocker.patch("app.services.process_messages.pubsub", mock_pubsub_client)
@@ -137,6 +140,7 @@ async def test_throttling_on_rate_limit_exceeded(
     # Mock external dependencies
     mocker.patch("app.core.gundi.portal_client", mock_gundi_client_v1)
     mocker.patch("app.core.gundi.redis_client", mock_redis_with_rate_limit_exceeded)
+    mocker.patch("app.core.utils.redis_client", mock_redis_with_rate_limit_exceeded)
     mocker.patch(
         "app.services.dispatchers.redis_client", mock_redis_with_rate_limit_exceeded
     )
