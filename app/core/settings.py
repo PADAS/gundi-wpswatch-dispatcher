@@ -38,6 +38,7 @@ DEAD_LETTER_TOPIC = env.str("DEAD_LETTER_TOPIC", "destinations-dead-letter-dev")
 DISPATCHER_EVENTS_TOPIC = env.str("DISPATCHER_EVENTS_TOPIC", "dispatcher-events-dev")
 MAX_EVENT_AGE_SECONDS = env.int("MAX_EVENT_AGE_SECONDS", 86400)  # 24hrs
 BUCKET_NAME = env.str("BUCKET_NAME", "cdip-files-dev")
+DELETE_FILES_AFTER_DELIVERY = env.bool("DELETE_FILES_AFTER_DELIVERY", False)
 
 # Requests rate limitting
 MAX_REQUESTS = env.int("MAX_REQUESTS", 3)

@@ -40,8 +40,14 @@ class WPSWatchCameraTrapDispatcher:
         except Exception as e:
             logger.exception(f"Error sending data to WPS Watch {e}")
             raise e
-        else:  # Remove the file from GCP after delivering it to WPS Watch
-            await gcp_storage.delete(bucket=settings.BUCKET_NAME, object_name=file_name)
+        else:
+            logger.info(f"File {file_name} delivered to WPS Watch with success.")
+            # Remove the file from GCP after delivering it to WPS Watch
+            if settings.DELETE_FILES_AFTER_DELIVERY:
+                await gcp_storage.delete(
+                    bucket=settings.BUCKET_NAME, object_name=file_name
+                )
+                logger.debug(f"File {file_name} deleted from GCP.")
             return result
 
     # ToDo: Make a WPS Watch client class?
