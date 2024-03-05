@@ -6,7 +6,7 @@ from app.core import settings
 from urllib.parse import urlparse
 from gundi_core import schemas
 from gcloud.aio.storage import Storage
-from app.core.utils import RateLimiterSemaphore, _redis_client
+from app.core.utils import RateLimiterSemaphore, redis_client
 
 gcp_storage = Storage()
 
@@ -34,7 +34,7 @@ class WPSWatchCameraTrapDispatcher:
             )
             file_data = self.get_file_data(file_name, downloaded_file)
             async with RateLimiterSemaphore(
-                redis_client=_redis_client, url=str(self.config.endpoint)
+                redis_client=redis_client, url=str(self.config.endpoint)
             ):
                 result = await self.wpswatch_post(camera_trap_payload, file_data)
         except Exception as e:

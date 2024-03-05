@@ -1,19 +1,37 @@
 import logging
 import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.services.process_messages import process_request
+from app.services import dispatchers
+from app.core import utils, gundi
 
 # For running behind a proxy, we'll want to configure the root path for OpenAPI browser.
 root_path = os.environ.get("ROOT_PATH", "")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup Hook
+    yield
+    # Shotdown Hook
+    await gundi.portal_client.close()
+    await utils.redis_client.close()
+    await dispatchers.gcp_storage.close()
+
+
 app = FastAPI(
     title="Gundi WPS Watch Dispatcher",
     description="Service that sends data to WPS Watch",
     version="1",
+    lifespan=lifespan,
 )
+
 
 origins = [
     "*",
