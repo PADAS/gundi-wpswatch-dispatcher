@@ -2,6 +2,8 @@ import pytest
 import respx
 import httpx
 from fastapi.testclient import TestClient
+
+from app.core import settings
 from app.core.errors import TooManyRequests
 from app.main import app
 
@@ -42,7 +44,8 @@ async def test_process_cameratrap_file_successfully(
         assert route.called
         # Check that the file was retrieved and deleted from GCP
         assert mock_cloud_storage_client.download.called
-        assert mock_cloud_storage_client.delete.called
+        if settings.DELETE_FILES_AFTER_DELIVERY:
+            assert mock_cloud_storage_client.delete.called
 
 
 @pytest.mark.asyncio
