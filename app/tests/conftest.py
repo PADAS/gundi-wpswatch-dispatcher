@@ -135,7 +135,9 @@ def mock_gundi_client_v1(
 
 @pytest.fixture
 def pubsub_cloud_event_headers():
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%S.%fZ"
+    )
     return {
         "host": "smart-dispatcher-jabcutl7za-uc.a.run.app",
         "content-type": "application/json",
@@ -155,6 +157,62 @@ def pubsub_cloud_event_headers():
         "ce-specversion": "1.0",
         "ce-type": "google.cloud.pubsub.topic.v1.messagePublished",
         "ce-time": timestamp,
+    }
+
+
+@pytest.fixture
+def pubsub_cloud_event_headers_with_future_timestamp():
+    future_datetime = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+        hours=1
+    )
+    future_timestamp = future_datetime.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    return {
+        "host": "smart-dispatcher-jabcutl7za-uc.a.run.app",
+        "content-type": "application/json",
+        "authorization": "Bearer fake-token",
+        "content-length": "2057",
+        "accept": "application/json",
+        "from": "noreply@google.com",
+        "user-agent": "APIs-Google; (+https://developers.google.com/webmasters/APIs-Google.html)",
+        "x-cloud-trace-context": "",
+        "traceparent": "",
+        "x-forwarded-for": "64.233.172.137",
+        "x-forwarded-proto": "https",
+        "forwarded": 'for="64.233.172.137";proto=https',
+        "accept-encoding": "gzip, deflate, br",
+        "ce-id": "10090163454824831",
+        "ce-source": "//pubsub.googleapis.com/projects/cdip-stage-78ca/topics/smart-dispatcher-topic-test",
+        "ce-specversion": "1.0",
+        "ce-type": "google.cloud.pubsub.topic.v1.messagePublished",
+        "ce-time": future_timestamp,
+    }
+
+
+@pytest.fixture
+def pubsub_cloud_event_headers_with_old_timestamp():
+    old_datetime = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+        hours=25
+    )
+    old_timestamp = old_datetime.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    return {
+        "host": "smart-dispatcher-jabcutl7za-uc.a.run.app",
+        "content-type": "application/json",
+        "authorization": "Bearer fake-token",
+        "content-length": "2057",
+        "accept": "application/json",
+        "from": "noreply@google.com",
+        "user-agent": "APIs-Google; (+https://developers.google.com/webmasters/APIs-Google.html)",
+        "x-cloud-trace-context": "",
+        "traceparent": "",
+        "x-forwarded-for": "64.233.172.137",
+        "x-forwarded-proto": "https",
+        "forwarded": 'for="64.233.172.137";proto=https',
+        "accept-encoding": "gzip, deflate, br",
+        "ce-id": "10090163454824831",
+        "ce-source": "//pubsub.googleapis.com/projects/cdip-stage-78ca/topics/smart-dispatcher-topic-test",
+        "ce-specversion": "1.0",
+        "ce-type": "google.cloud.pubsub.topic.v1.messagePublished",
+        "ce-time": old_timestamp,
     }
 
 

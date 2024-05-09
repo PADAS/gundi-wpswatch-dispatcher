@@ -266,7 +266,9 @@ def is_too_old(timestamp):
     except ValueError:
         event_time = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ")
     event_time = event_time.replace(tzinfo=timezone.utc)
-    event_age_seconds = (datetime.now(timezone.utc) - event_time).seconds
+    current_time = datetime.now(timezone.utc)
+    # Notice: We have seen cloud events with future timestamps. Don't use .seconds
+    event_age_seconds = (current_time - event_time).total_seconds()
     return event_age_seconds > settings.MAX_EVENT_AGE_SECONDS
 
 
@@ -281,10 +283,12 @@ async def process_request(request):
     with tracing.tracer.start_as_current_span(
         "wpswatch_dispatcher.process_request", kind=SpanKind.CLIENT
     ) as current_span:
-        if is_too_old(timestamp=request.headers.get("ce-time")):
+        timestamp = request.headers.get("ce-time")
+        if is_too_old(timestamp=timestamp):
             logger.warning(
-                f"Message discarded. The message is too old or the retry time limit has been reached."
+                f"Message discarded (timestamp = {timestamp}). The message is too old or the retry time limit has been reached."
             )
+            current_span.set_attribute("is_too_old", True)
             await send_observation_to_dead_letter_topic(
                 transformed_observation, attributes
             )

@@ -9,16 +9,27 @@ from app.main import app
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "event_headers,process_msg_expected",
+    [
+        ("pubsub_cloud_event_headers", True),
+        ("pubsub_cloud_event_headers_with_future_timestamp", True),
+        ("pubsub_cloud_event_headers_with_old_timestamp", False),
+    ],
+)
 async def test_process_cameratrap_file_successfully(
+    request,
+    process_msg_expected,
     mocker,
     mock_redis,
     mock_gundi_client_v1,
     mock_cloud_storage_client,
     mock_pubsub_client,
-    pubsub_cloud_event_headers,
+    event_headers,
     cameratrap_v1_cloud_event_payload,
     camera_trap_upload_response,
 ):
+    event_headers = request.getfixturevalue(event_headers)
     # Mock external dependencies
     mocker.patch("app.core.gundi.portal_client", mock_gundi_client_v1)
     mocker.patch("app.core.gundi.redis_client", mock_redis)
@@ -26,7 +37,9 @@ async def test_process_cameratrap_file_successfully(
     mocker.patch("app.services.dispatchers.redis_client", mock_redis)
     mocker.patch("app.services.dispatchers.gcp_storage", mock_cloud_storage_client)
     mocker.patch("app.services.process_messages.pubsub", mock_pubsub_client)
-    async with respx.mock(base_url="https://wpswatch-api.test.com") as respx_mock:
+    async with respx.mock(
+        base_url="https://wpswatch-api.test.com", assert_all_called=False
+    ) as respx_mock:
         # Mock the WPSWatch API response
         route = respx_mock.post(f"api/Upload", name="upload_file").respond(
             httpx.codes.OK
@@ -36,15 +49,18 @@ async def test_process_cameratrap_file_successfully(
         ) as api_client:  # Use as context manager to trigger lifespan hooks
             response = api_client.post(
                 "/",
-                headers=pubsub_cloud_event_headers,
+                headers=event_headers,
                 json=cameratrap_v1_cloud_event_payload,
             )
             assert response.status_code == 200
         # Check that the wpswatch api was called
-        assert route.called
+        assert route.called == process_msg_expected
         # Check that the file was retrieved and deleted from GCP
-        assert mock_cloud_storage_client.download.called
-        if settings.DELETE_FILES_AFTER_DELIVERY:
+        assert mock_cloud_storage_client.download.called == process_msg_expected
+        if (
+            mock_cloud_storage_client.download.called
+            and settings.DELETE_FILES_AFTER_DELIVERY
+        ):
             assert mock_cloud_storage_client.delete.called
 
 
