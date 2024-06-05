@@ -1,0 +1,26 @@
+name: Build dispatcher
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  vars:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.vars.outputs.tag }}
+      repository: ${{ steps.vars.outputs.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: vars
+        run: |
+          echo "tag=${{ github.head_ref || github.ref_name }}-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "repository=us-central1-docker.pkg.dev/cdip-78ca/gundi-dispatchers/wpswatch" >> $GITHUB_OUTPUT
+
+  build:
+    uses: PADAS/gundi-workflows/.github/workflows/build_docker.yml@v2
+    needs: vars
+    with:
+      environment: dev
+      repository: ${{ needs.vars.outputs.repository }}
+      tag: ${{ needs.vars.outputs.tag }}
