@@ -1,6 +1,7 @@
 import datetime
 import pytest
 import asyncio
+import gundi_core.schemas.v2 as schemas_v2
 from gcloud.aio import pubsub
 from app.core import settings
 
@@ -15,6 +16,27 @@ def async_return(result):
 def mock_redis(mocker):
     mock_cache = mocker.MagicMock()
     mock_cache.get.return_value = async_return(None)
+    mock_cache.setex.return_value = async_return(None)
+    mock_cache.incr.return_value = mock_cache
+    mock_cache.decr.return_value = async_return(None)
+    mock_cache.expire.return_value = mock_cache
+    mock_cache.execute.return_value = async_return((1, True))
+    mock_cache.__aenter__.return_value = mock_cache
+    mock_cache.__aexit__.return_value = None
+    mock_cache.close.return_value = async_return(None)
+    mock_cache.pipeline.return_value = mock_cache
+    return mock_cache
+
+
+@pytest.fixture
+def cached_event():
+    return '{"camera_id": "gunditest"}'
+
+
+@pytest.fixture
+def mock_redis_with_cached_event(mocker, cached_event):
+    mock_cache = mocker.MagicMock()
+    mock_cache.get.return_value = async_return(cached_event)
     mock_cache.setex.return_value = async_return(None)
     mock_cache.incr.return_value = mock_cache
     mock_cache.decr.return_value = async_return(None)
@@ -115,6 +137,93 @@ def outbound_integration_config():
 
 
 @pytest.fixture
+def destination_integration_v2():
+    return schemas_v2.Integration.parse_obj(
+        {
+            "id": "79bef222-74aa-4065-88a8-ac9656246693",
+            "name": "WPSWatch QA",
+            "base_url": "https://wpswatch-api-qa.azurewebsites.net",
+            "enabled": True,
+            "type": {
+                "id": "80bda69d-51ed-4c33-8420-0104e62d6639",
+                "name": "WPSWatch",
+                "value": "wps_watch",
+                "description": "",
+                "actions": [
+                    {
+                        "id": "1c9e2383-8154-404a-90b1-f4c591627d51",
+                        "type": "auth",
+                        "name": "Authenticate",
+                        "value": "auth",
+                        "description": "",
+                        "schema": {
+                            "type": "object",
+                            "required": ["api_key"],
+                            "properties": {"api_key": {"type": "string"}},
+                        },
+                    },
+                    {
+                        "id": "1109d75f-6456-4060-b2da-385e9ddde554",
+                        "type": "push",
+                        "name": "Push Events",
+                        "value": "push_events",
+                        "description": "",
+                        "schema": {
+                            "type": "object",
+                            "required": ["upload_domain"],
+                            "properties": {"upload_domain": {"type": "string"}},
+                        },
+                    },
+                ],
+                "webhook": None,
+            },
+            "owner": {
+                "id": "a91b400b-482a-4546-8fcb-ee42b01deeb6",
+                "name": "Test Org",
+                "description": "",
+            },
+            "configurations": [
+                {
+                    "id": "92d9fb49-f3c6-473f-9220-59745e854da5",
+                    "integration": "79bef222-74aa-4065-88a8-ac9656246693",
+                    "action": {
+                        "id": "1109d75f-6456-4060-b2da-385e9ddde554",
+                        "type": "push",
+                        "name": "Push Events",
+                        "value": "push_events",
+                    },
+                    "data": {"upload_domain": "upload-qa.wpswatch.org"},
+                },
+                {
+                    "id": "61a55770-0cf4-42b9-9054-ba0222ee5bc3",
+                    "integration": "79bef222-74aa-4065-88a8-ac9656246693",
+                    "action": {
+                        "id": "1c9e2383-8154-404a-90b1-f4c591627d51",
+                        "type": "auth",
+                        "name": "Authenticate",
+                        "value": "auth",
+                    },
+                    "data": {"api_key": "fakekey123"},  # pragma: allowlist secret
+                },
+            ],
+            "webhook_configuration": None,
+            "additional": {
+                "topic": "wpswatch-api-qa-wpswatch-sTHDqqN-topic",
+                "broker": "gcp_pubsub",
+            },
+            "default_route": None,
+            "status": {
+                "id": "mockid-b16a-4dbd-ad32-197c58aeef59",
+                "is_healthy": True,
+                "details": "Last observation has been delivered with success.",
+                "observation_delivered_24hrs": 50231,
+                "last_observation_delivered_at": "2023-03-31T11:20:00+0200",
+            },
+        }
+    )
+
+
+@pytest.fixture
 def mock_gundi_client_v1(
     mocker,
     inbound_integration_config,
@@ -131,6 +240,26 @@ def mock_gundi_client_v1(
     mock_client.__aexit__.return_value = None
     mock_client.close.return_value = async_return(None)
     return mock_client
+
+
+@pytest.fixture
+def mock_gundi_client_v2(
+    mocker,
+    destination_integration_v2,
+):
+    mock_client = mocker.MagicMock()
+    mock_client.get_integration_details.return_value = async_return(
+        destination_integration_v2
+    )
+    mock_client.__aenter__.return_value = mock_client
+    return mock_client
+
+
+@pytest.fixture
+def mock_gundi_client_v2_class(mocker, mock_gundi_client_v2):
+    mock_gundi_client_v2_class = mocker.MagicMock()
+    mock_gundi_client_v2_class.return_value = mock_gundi_client_v2
+    return mock_gundi_client_v2_class
 
 
 @pytest.fixture
@@ -235,6 +364,52 @@ def cameratrap_v1_cloud_event_payload():
             "publish_time": timestamp,
         },
         "subscription": "projects/cdip-stage-78ca/subscriptions/eventarc-us-central1-smart-dispatcher-topic-test-trigger-1zb7crbq-sub-909",
+    }
+
+
+@pytest.fixture
+def event_v2_cloud_event_payload():
+    return {
+        "message": {
+            "data": "eyJldmVudF9pZCI6ICJiNjI5NGFjZS1kYzhjLTQ4MjAtYWQ5MC1iZTJmOTQ4YTA2ZGIiLCAidGltZXN0YW1wIjogIjIwMjQtMDgtMjAgMjE6MTA6MzIuNTY5ODk1KzAwOjAwIiwgInNjaGVtYV92ZXJzaW9uIjogInYxIiwgInBheWxvYWQiOiB7ImNhbWVyYV9pZCI6ICJndW5kaXRlc3QifSwgImV2ZW50X3R5cGUiOiAiRXZlbnRUcmFuc2Zvcm1lZFdQU1dhdGNoIn0=",  # pragma: allowlist secret
+            "attributes": {
+                "gundi_version": "v2",
+                "provider_key": "gundi_trap_tagger_d88ac520-2bf6-4e6b-ab09-38ed1ec6947a",
+                "gundi_id": "2a1e0e6c-334f-42fe-9d45-12c34ed4866f",
+                "related_to": "None",
+                "stream_type": "ev",
+                "source_id": "ac1b9cdc-a193-4515-b446-b177bcc5f342",
+                "external_source_id": "gunditest",
+                "destination_id": "79bef222-74aa-4065-88a8-ac9656246693",
+                "data_provider_id": "d88ac520-2bf6-4e6b-ab09-38ed1ec6947a",
+                "annotations": "{}",
+                "tracing_context": "{}",
+            },
+        },
+        "subscription": "projects/MY-PROJECT/subscriptions/MY-SUB",  # pragma: allowlist secret
+    }
+
+
+@pytest.fixture
+def attachment_v2_cloud_event_payload():
+    return {
+        "message": {
+            "data": "eyJldmVudF9pZCI6ICI0N2E0NjRhYi05OWYwLTRkMGUtOGQwYy1iNTU0YjI0NWI4YTIiLCAidGltZXN0YW1wIjogIjIwMjQtMDgtMjAgMjE6NDM6NTMuMTI5Njc5KzAwOjAwIiwgInNjaGVtYV92ZXJzaW9uIjogInYxIiwgInBheWxvYWQiOiB7ImZpbGVfcGF0aCI6ICJhdHRhY2htZW50cy83Njg3YThkNS1hODlkLTRjZWItYmUzYi01ZTFlM2I3ZGMxYTlfZWxlcGhhbnQuanBnIn0sICJldmVudF90eXBlIjogIkF0dGFjaG1lbnRUcmFuc2Zvcm1lZFdQU1dhdGNoIn0=",  # pragma: allowlist secret
+            "attributes": {
+                "gundi_version": "v2",
+                "provider_key": "gundi_trap_tagger_d88ac520-2bf6-4e6b-ab09-38ed1ec6947a",
+                "gundi_id": "e6795790-4a5f-4d47-ac93-de7d7713698b",
+                "related_to": "2a1e0e6c-334f-42fe-9d45-12c34ed4866f",
+                "stream_type": "att",
+                "source_id": "ac1b9cdc-a193-4515-b446-b177bcc5f342",
+                "external_source_id": "gunditest",
+                "destination_id": "79bef222-74aa-4065-88a8-ac9656246693",
+                "data_provider_id": "d88ac520-2bf6-4e6b-ab09-38ed1ec6947a",
+                "annotations": "{}",
+                "tracing_context": "{}",
+            },
+        },
+        "subscription": "projects/MY-PROJECT/subscriptions/MY-SUB",  # pragma: allowlist secret
     }
 
 
