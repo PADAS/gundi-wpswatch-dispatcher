@@ -90,7 +90,7 @@ gundi-client==1.0.3
     # via -r requirements.in
 gundi-client-v2==2.3.4
     # via -r requirements.in
-gundi-core==1.5.9
+gundi-core==1.6.1
     # via
     #   -r requirements.in
     #   gundi-client
@@ -189,7 +189,7 @@ pyasn1-modules==0.3.0
     #   google-auth
 pycparser==2.21
     # via cffi
-pydantic==1.10.13
+pydantic==1.10.15
     # via
     #   -r requirements.in
     #   fastapi
