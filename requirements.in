@@ -6,8 +6,8 @@ walrus==0.9.2
 aioredis==2.0.1
 hiredis==2.3.2
 gundi-core==1.6.1
-gundi-client==1.0.3
-gundi-client-v2==2.3.4
+gundi-client==1.0.4
+gundi-client-v2==2.3.5
 httpx==0.24.1
 backoff==2.2
 gcloud-aio-pubsub==6.0.0

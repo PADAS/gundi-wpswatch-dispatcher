@@ -86,9 +86,9 @@ grpcio==1.60.0
     #   grpcio-status
 grpcio-status==1.60.0
     # via google-api-core
-gundi-client==1.0.3
+gundi-client==1.0.4
     # via -r requirements.in
-gundi-client-v2==2.3.4
+gundi-client-v2==2.3.5
     # via -r requirements.in
 gundi-core==1.6.1
     # via
@@ -215,8 +215,9 @@ requests==2.31.0
     # via
     #   google-api-core
     #   opentelemetry-exporter-otlp-proto-http
-respx==0.20.2
+respx==0.21.1
     # via
+    #   -r requirements-dev.in
     #   gundi-client
     #   gundi-client-v2
 rsa==4.9
