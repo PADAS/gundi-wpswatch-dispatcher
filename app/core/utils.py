@@ -102,6 +102,13 @@ def is_null(value):
     return value in {None, "", "None", "null"}
 
 
+def find_config_for_action(configurations, action_value):
+    return next(
+        (config for config in configurations if config.action.value == action_value),
+        None,
+    )
+
+
 class RateLimiterSemaphore:
     def __init__(self, redis_client, url, **kwargs):
         self.url = url
