@@ -121,14 +121,15 @@ async def dispatch_image(
     data_provider_id = attributes.get("data_provider_id")
     destination_id = attributes.get("destination_id")
     with tracing.tracer.start_as_current_span(
-        "wpswatch_dispatcher.dispatch_image", kind=SpanKind.CONSUMER
+        "wpswatch_dispatcher.dispatch_image", kind=SpanKind.CLIENT
     ) as current_span:
         try:
             dispatcher = WPSWatchImageDispatcher(integration=integration)
             result = await dispatcher.send(image=image, related_event=related_event)
         except Exception as e:
             with tracing.tracer.start_as_current_span(
-                "er_dispatcher.error_dispatching_observation", kind=SpanKind.CLIENT
+                "wpswatch_dispatcher.error_dispatching_observation",
+                kind=SpanKind.CLIENT,
             ) as error_span:
                 error_msg = f"Error dispatching observation {gundi_id} to destination {destination_id}: {type(e)}: {e}"
                 logger.exception(error_msg)
