@@ -16,6 +16,7 @@ from app.core.gundi import (
 from app.core.errors import DispatcherException, ReferenceDataError, TooManyRequests
 from app.core import tracing
 from . import dispatchers
+from .event_handlers import event_handlers, event_schemas
 
 
 logger = logging.getLogger(__name__)
@@ -272,18 +273,56 @@ def is_too_old(timestamp):
     return event_age_seconds > settings.MAX_EVENT_AGE_SECONDS
 
 
+async def process_transformer_event_v2(raw_event, attributes):
+    with tracing.tracer.start_as_current_span(
+        "wpswatch_dispatcher.process_transformer_event_v2", kind=SpanKind.CLIENT
+    ) as current_span:
+        current_span.add_event(
+            name="wpswatch_dispatcher.transformed_observation_received_at_dispatcher"
+        )
+        current_span.set_attribute("transformed_message", str(raw_event))
+        current_span.set_attribute("environment", settings.TRACE_ENVIRONMENT)
+        current_span.set_attribute("service", "er-dispatcher")
+        logger.debug(
+            f"Message received: \npayload: {raw_event} \nattributes: {attributes}"
+        )
+        if schema_version := raw_event.get("schema_version") != "v1":
+            logger.warning(
+                f"Schema version '{schema_version}' not supported. Message discarded."
+            )
+            return
+        event_type = raw_event.get("event_type")
+        current_span.set_attribute("event_type", str(event_type))
+        try:
+            handler = event_handlers[event_type]
+        except KeyError:
+            logger.warning(f"Event of type '{event_type}' unknown. Ignored.")
+            current_span.add_event(
+                name="wpswatch_dispatcher.discarded_transformer_event_with_invalid_type"
+            )
+            return
+        try:
+            schema = event_schemas[event_type]
+        except KeyError:
+            logger.warning(
+                f"Event Schema for '{event_type}' not found. Message discarded."
+            )
+            return {}
+        parsed_event = schema.parse_obj(raw_event)
+        return await handler(event=parsed_event, attributes=attributes)
+
+
 async def process_request(request):
     # Extract the observation and attributes from the CloudEvent
     json_data = await request.json()
-    transformed_observation, attributes = extract_fields_from_message(
-        json_data["message"]
-    )
+    pubsub_message = json_data["message"]
+    transformed_observation, attributes = extract_fields_from_message(pubsub_message)
     # Load tracing context
     tracing.pubsub_instrumentation.load_context_from_attributes(attributes)
     with tracing.tracer.start_as_current_span(
         "wpswatch_dispatcher.process_request", kind=SpanKind.CLIENT
     ) as current_span:
-        timestamp = request.headers.get("ce-time")
+        timestamp = request.headers.get("ce-time") or pubsub_message.get("publish_time")
         if is_too_old(timestamp=timestamp):
             logger.warning(
                 f"Message discarded (timestamp = {timestamp}). The message is too old or the retry time limit has been reached."
@@ -300,6 +339,8 @@ async def process_request(request):
             await process_transformed_observation_v1(
                 transformed_observation, attributes
             )
+        elif version == "v2":
+            await process_transformer_event_v2(transformed_observation, attributes)
         else:
             logger.warning(
                 f"Message discarded. Version '{version}' is not supported by this dispatcher."

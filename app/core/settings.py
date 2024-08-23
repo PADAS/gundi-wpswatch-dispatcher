@@ -1,9 +1,31 @@
+import logging.config
+import sys
+
 from environs import Env
 
 env = Env()
 env.read_env()
 
 LOGGING_LEVEL = env.str("LOGGING_LEVEL", "INFO")
+
+DEFAULT_LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "level": LOGGING_LEVEL,
+            "class": "logging.StreamHandler",
+            "stream": sys.stdout,
+        },
+    },
+    "loggers": {
+        "": {
+            "handlers": ["console"],
+            "level": LOGGING_LEVEL,
+        },
+    },
+}
+logging.config.dictConfig(DEFAULT_LOGGING)
 
 DEFAULT_REQUESTS_TIMEOUT = (10, 20)  # Connect, Read
 
@@ -39,6 +61,7 @@ DISPATCHER_EVENTS_TOPIC = env.str("DISPATCHER_EVENTS_TOPIC", "dispatcher-events-
 MAX_EVENT_AGE_SECONDS = env.int("MAX_EVENT_AGE_SECONDS", 86400)  # 24hrs
 BUCKET_NAME = env.str("BUCKET_NAME", "cdip-files-dev")
 DELETE_FILES_AFTER_DELIVERY = env.bool("DELETE_FILES_AFTER_DELIVERY", False)
+IMAGE_METADATA_CACHE_TTL = env.int("IMAGE_METADATA_CACHE_TTL", 3600)  # 1 Hour
 
 # Requests rate limitting
 MAX_REQUESTS = env.int("MAX_REQUESTS", 3)
