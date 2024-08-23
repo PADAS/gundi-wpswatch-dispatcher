@@ -120,44 +120,61 @@ async def dispatch_image(
     related_to = attributes.get("related_to")
     data_provider_id = attributes.get("data_provider_id")
     destination_id = attributes.get("destination_id")
-    try:
-        dispatcher = WPSWatchImageDispatcher(integration=integration)
-        result = await dispatcher.send(image=image, related_event=related_event)
-    except Exception as e:
-        logger.exception(
-            f"Error dispatching observation {gundi_id} to destination {destination_id}: {type(e)}: {e}",
-        )
-        # Emit events for the portal and other interested services (EDA)
-        await publish_event(
-            event=system_events.ObservationDeliveryFailed(
-                payload=gundi_schemas_v2.DispatchedObservation(
-                    gundi_id=gundi_id,
-                    related_to=related_to,
-                    external_id=gundi_id,  # ID in the destination system
-                    data_provider_id=data_provider_id,
-                    destination_id=destination_id,
-                    delivered_at=datetime.now(timezone.utc),  # UTC
+    with tracing.tracer.start_as_current_span(
+        "wpswatch_dispatcher.dispatch_image", kind=SpanKind.CLIENT
+    ) as current_span:
+        try:
+            dispatcher = WPSWatchImageDispatcher(integration=integration)
+            result = await dispatcher.send(image=image, related_event=related_event)
+        except Exception as e:
+            with tracing.tracer.start_as_current_span(
+                "wpswatch_dispatcher.error_dispatching_observation",
+                kind=SpanKind.CLIENT,
+            ) as error_span:
+                error_msg = f"Error dispatching observation {gundi_id} to destination {destination_id}: {type(e)}: {e}"
+                logger.exception(error_msg)
+                error_span.set_attribute("error", error_msg)
+                # Emit events for the portal and other interested services (EDA)
+                await publish_event(
+                    event=system_events.ObservationDeliveryFailed(
+                        payload=gundi_schemas_v2.DispatchedObservation(
+                            gundi_id=gundi_id,
+                            related_to=related_to,
+                            external_id=gundi_id,  # ID in the destination system
+                            data_provider_id=data_provider_id,
+                            destination_id=destination_id,
+                            delivered_at=datetime.now(timezone.utc),  # UTC
+                        )
+                    ),
+                    topic_name=settings.DISPATCHER_EVENTS_TOPIC,
                 )
-            ),
-            topic_name=settings.DISPATCHER_EVENTS_TOPIC,
-        )
-        # Raise so it can be retried by GCP
-        raise e
-    else:
-        # Emit events for the portal and other interested services (EDA)
-        dispatched_observation = gundi_schemas_v2.DispatchedObservation(
-            gundi_id=gundi_id,
-            related_to=related_to,
-            external_id=gundi_id,  # ID in the destination system
-            data_provider_id=data_provider_id,
-            destination_id=destination_id,
-            delivered_at=datetime.now(timezone.utc),  # UTC
-        )
-        await publish_event(
-            event=system_events.ObservationDelivered(payload=dispatched_observation),
-            topic_name=settings.DISPATCHER_EVENTS_TOPIC,
-        )
-        return result
+                # Raise so it can be retried by GCP
+                raise e
+        else:
+            logger.debug(
+                f"Observation {gundi_id} delivered with success. WPS response: {result}"
+            )
+            current_span.set_attribute("is_dispatched_successfully", True)
+            current_span.set_attribute("destination_id", str(destination_id))
+            current_span.add_event(
+                name="wpswatch_dispatcher.observation_dispatched_successfully"
+            )
+            # Emit events for the portal and other interested services (EDA)
+            dispatched_observation = gundi_schemas_v2.DispatchedObservation(
+                gundi_id=gundi_id,
+                related_to=related_to,
+                external_id=gundi_id,  # ID in the destination system
+                data_provider_id=data_provider_id,
+                destination_id=destination_id,
+                delivered_at=datetime.now(timezone.utc),  # UTC
+            )
+            await publish_event(
+                event=system_events.ObservationDelivered(
+                    payload=dispatched_observation
+                ),
+                topic_name=settings.DISPATCHER_EVENTS_TOPIC,
+            )
+            return result
 
 
 async def handle_wpswatch_event(event: EventTransformedWPSWatch, attributes: dict):
