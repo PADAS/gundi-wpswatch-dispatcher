@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - gundi-3071
 
 jobs:
   vars:
@@ -25,3 +26,25 @@ jobs:
       repository: ${{ needs.vars.outputs.repository }}
       tag: ${{ needs.vars.outputs.tag }}
       dockerfile: Dockerfile
+
+  run_unit_tests:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+      - name: Install pip
+        run: python -m ensurepip --upgrade
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.in
+      - name: Install dev dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Install dev dependencies
+        run: pip install -r requirements-dev.in
+      - name: Run unit tests
+        run: pytest
