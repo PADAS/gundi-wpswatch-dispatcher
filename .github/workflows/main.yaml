@@ -18,18 +18,9 @@ jobs:
           echo "tag=${{ github.head_ref || github.ref_name }}-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "repository=us-central1-docker.pkg.dev/cdip-78ca/gundi-dispatchers/wpswatch" >> $GITHUB_OUTPUT
 
-  build:
-    uses: PADAS/gundi-workflows/.github/workflows/build_docker.yml@v2
-    needs: vars
-    with:
-      environment: dev
-      repository: ${{ needs.vars.outputs.repository }}
-      tag: ${{ needs.vars.outputs.tag }}
-      dockerfile: Dockerfile
-
   run_unit_tests:
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [vars]
     steps:
       - name: Checkout branch
         uses: actions/checkout@v4
@@ -50,3 +41,12 @@ jobs:
         run: pytest
         env:
           TRACING_ENABLED: False
+  
+  build:
+    uses: PADAS/gundi-workflows/.github/workflows/build_docker.yml@v2
+    needs: [vars,run_unit_tests]
+    with:
+      environment: dev
+      repository: ${{ needs.vars.outputs.repository }}
+      tag: ${{ needs.vars.outputs.tag }}
+      dockerfile: Dockerfile
