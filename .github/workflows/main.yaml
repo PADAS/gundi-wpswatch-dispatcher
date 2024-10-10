@@ -28,14 +28,8 @@ jobs:
           python-version: '3.8'
       - name: Install pip
         run: python -m ensurepip --upgrade
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Install dependencies
-        run: pip install -r requirements.in
       - name: Install dev dependencies
         run: pip install -r requirements-dev.txt
-      - name: Install dev dependencies
-        run: pip install -r requirements-dev.in
       - name: Run unit tests
         run: pytest
         env:
