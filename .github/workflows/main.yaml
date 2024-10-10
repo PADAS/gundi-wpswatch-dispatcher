@@ -48,3 +48,5 @@ jobs:
         run: pip install -r requirements-dev.in
       - name: Run unit tests
         run: pytest
+        env:
+          TRACING_ENABLED: False
