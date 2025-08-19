@@ -56,7 +56,7 @@ TRACE_ENVIRONMENT = env.str("TRACE_ENVIRONMENT", "dev")
 
 # Retries and dead-letter settings
 GCP_PROJECT_ID = env.str("GCP_PROJECT_ID", "cdip-78ca")
-LEGACY_DEAD_LETTER_TOPIC = env.str("DEAD_LETTER_TOPIC", "destinations-dead-letter-dev")
+LEGACY_DEAD_LETTER_TOPIC = env.str("DEAD_LETTER_TOPIC", "dispatchers-dead-letter-prod")
 OBSERVATIONS_DEAD_LETTER_TOPIC = env.str(
     "OBSERVATIONS_DEAD_LETTER_TOPIC", "observations-dead-letter"
 )
