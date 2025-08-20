@@ -1,4 +1,6 @@
 import datetime
+from unittest.mock import AsyncMock, patch
+
 import pytest
 import asyncio
 import gundi_core.schemas.v2 as schemas_v2
@@ -432,6 +434,12 @@ def mock_cloud_storage_client_class(mocker, mock_cloud_storage_client):
     mock_cloud_storage_client_class = mocker.MagicMock()
     mock_cloud_storage_client_class.return_value = mock_cloud_storage_client
     return mock_cloud_storage_client_class
+
+
+@pytest.fixture(autouse=True)
+def mock_storage(mock_cloud_storage_client_class):
+    with patch("gcloud.aio.storage.Storage", mock_cloud_storage_client_class):
+        yield mock_cloud_storage_client_class
 
 
 @pytest.fixture
