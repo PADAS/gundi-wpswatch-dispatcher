@@ -436,12 +436,6 @@ def mock_cloud_storage_client_class(mocker, mock_cloud_storage_client):
     return mock_cloud_storage_client_class
 
 
-@pytest.fixture(autouse=True)
-def mock_storage(mock_cloud_storage_client_class):
-    with patch("gcloud.aio.storage.Storage", mock_cloud_storage_client_class):
-        yield mock_cloud_storage_client_class
-
-
 @pytest.fixture
 def camera_trap_upload_response():
     return {}  # ToDo: Check a real WPSWatch api response

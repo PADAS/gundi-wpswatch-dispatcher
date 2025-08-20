@@ -1,5 +1,7 @@
 import mimetypes
 import os
+from unittest.mock import AsyncMock
+
 import httpx
 import logging
 from app.core import settings
@@ -8,7 +10,10 @@ from gundi_core import schemas
 from gcloud.aio.storage import Storage
 from app.core.utils import RateLimiterSemaphore, redis_client, find_config_for_action
 
-gcp_storage = Storage()
+if settings.GCP_ENVIRONMENT_ENABLED:
+    gcp_storage = Storage()
+else:
+    gcp_storage = AsyncMock()  # Mock for CI/Test environment
 
 
 logger = logging.getLogger(__name__)
